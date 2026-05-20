@@ -107,6 +107,14 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
     });
   };
 
+  const fillSampleLesson = () => {
+    setTitle('荷花');
+    setGrade('三年级（部编版）');
+    setText('走到荷花池旁边，荷花已经开了不少了。荷叶挨挨挤挤的，像一个个碧绿的大圆盘。白荷花在这些大圆盘之间冒出来。有的才展开两三片花瓣儿。有的花瓣儿全展开了，露出嫩黄色的小莲蓬。有的还是花骨朵儿，看起来饱胀得马上要破裂似的。\n\n这么多的白荷花，一朵有一朵的姿势。看看这一朵，很美；看看那一朵，也很美。如果把眼前的一池荷花看作一大幅活的画，那画家的本领可真了不起。');
+    setConfusion('导入环节怎么设计？我想让孩子一开始就爱上这篇文章，但不知道用什么方式切入最自然。');
+    setPurpose('日常教学');
+  };
+
   const handleStart = () => {
     if (!title || !grade || selectedIds.size < 2) {
       alert('请填写课文、年级，并至少选择2位专家');
@@ -121,10 +129,19 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       {/* Left panel */}
       <div className="flex-1 max-w-[800px] bg-[#f6f4ee] bg-paper p-10 border border-[#e8e4db] shadow-sm flex flex-col relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-[url('https://www.transparenttextures.com/patterns/rice-paper-2.png')] opacity-20 pointer-events-none" />
-        <h2 className="text-3xl font-bold text-[#4a453c] mb-10 flex items-center gap-4 font-serif">
-          <span className="w-10 h-10 seal-stamp bg-white text-[#8C2218] flex items-center justify-center text-xl shadow-sm">壹</span>
-          设定研讨课题
-        </h2>
+        <div className="flex items-center justify-between mb-10">
+          <h2 className="text-3xl font-bold text-[#4a453c] flex items-center gap-4 font-serif">
+            <span className="w-10 h-10 seal-stamp bg-white text-[#8C2218] flex items-center justify-center text-xl shadow-sm">壹</span>
+            设定研讨课题
+          </h2>
+          <button
+            type="button"
+            onClick={fillSampleLesson}
+            className="text-[11px] font-bold text-[#a09a8e] font-serif tracking-wider border border-[#e8e4db] px-3 py-1.5 hover:border-[#8C2218] hover:text-[#8C2218] transition-all bg-white/50 whitespace-nowrap"
+          >
+            填入示例课题
+          </button>
+        </div>
 
         <div className="space-y-8 flex-1 overflow-y-auto pr-4 scrollbar-hide relative z-10">
           <div className="grid md:grid-cols-2 gap-8">

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Expert } from '../data/experts';
 import { LessonContext, generateRound1, generateRound2, generateRound3, sleep } from '../lib/gemini';
 import { cn } from '../lib/utils';
-import { Send, Loader2, UserCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Send, Loader2, UserCircle2, AlertCircle, RefreshCw, CheckCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from './ExportScreen';
 
@@ -141,6 +141,23 @@ export function DiscussionScreen({ context, experts, onFinish }: DiscussionScree
     if (round === 1) startRound2(feedback);
     else if (round === 2) startRound3(feedback);
     else if (round === 3) onFinish(messages);
+  };
+
+  // Skip remaining rounds and go straight to lesson plan generation
+  const handleSkipToLessonPlan = () => {
+    const feedback = teacherInput.trim();
+    const finalMessages: ChatMessage[] = [...messages];
+    if (feedback) {
+      finalMessages.push({
+        id: Math.random().toString(36).slice(2),
+        round,
+        role: 'teacher',
+        content: feedback,
+      });
+      setMessages(finalMessages);
+    }
+    setTeacherInput('');
+    onFinish(finalMessages);
   };
 
   return (
@@ -347,9 +364,9 @@ export function DiscussionScreen({ context, experts, onFinish }: DiscussionScree
           {!isProcessing && errorExpertIds.length === 0 && (
             <div className="p-6 bg-gradient-to-t from-[#f6f4ee] via-[#f6f4ee] to-transparent pt-12 z-20 border-t border-[#e8e4db]/50 relative">
               <div className="absolute inset-0 bg-[#e8e4db]/20 pattern-vertical-lines pointer-events-none opacity-50" />
-              <div className="flex gap-3 mb-4 overflow-x-auto pb-2 scrollbar-hide px-2 relative z-10">
+              <div className="flex gap-3 mb-3 overflow-x-auto pb-2 scrollbar-hide px-2 relative z-10">
                 {experts.map(e => (
-                  <button 
+                  <button
                     key={e.id}
                     onClick={() => setTeacherInput(`针对${e.name}老师提到的观点...`)}
                     className="whitespace-nowrap bg-white border border-[#d8d3c9] text-[12px] font-bold text-[#4a453c] px-6 py-2.5 hover:bg-[#e8e4db] hover:border-[#8c7b65] transition-all hover:shadow-sm shadow-sm font-serif tracking-widest"
@@ -358,15 +375,29 @@ export function DiscussionScreen({ context, experts, onFinish }: DiscussionScree
                   </button>
                 ))}
               </div>
+
+              {/* Skip-to-lesson-plan shortcut — visible in round 1 & 2 */}
+              {round < 3 && (
+                <div className="flex justify-end px-2 mb-2 relative z-10">
+                  <button
+                    onClick={handleSkipToLessonPlan}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-[#a09a8e] hover:text-[#8C2218] font-serif tracking-wide transition-colors border border-transparent hover:border-[#e8e4db] px-3 py-1 hover:bg-white/60"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    建议已够用，直接生成教案
+                  </button>
+                </div>
+              )}
+
               <div className="relative px-2 z-10">
                 <textarea
                   value={teacherInput}
                   onChange={(e) => setTeacherInput(e.target.value)}
-                  placeholder="输入您的追问或感悟，引导名师进入下一轮探讨..."
+                  placeholder={round < 3 ? "可追问、可留空——点「推进研讨」进入下一轮，或点上方按钮直接生成教案" : "输入您的最终补充（可留空），然后生成教案"}
                   rows={2}
                   className="w-full bg-white border border-[#d8d3c9] focus:border-[#8C2218] px-6 py-5 text-sm font-medium text-[#2b2b2b] outline-none transition-all placeholder:text-[#a09a8e] pr-[160px] resize-none font-serif shadow-inner"
                 />
-                <button 
+                <button
                   onClick={handleTeacherSubmit}
                   className="absolute right-6 bottom-4 bg-[#8C2218] hover:bg-[#681610] text-[#f5f2eb] text-sm font-bold px-8 py-3 transition-all shadow-md active:scale-95 flex items-center gap-2 font-serif tracking-widest border border-[#8C2218]"
                 >
