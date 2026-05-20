@@ -216,7 +216,7 @@ export function DiscussionScreen({ context, experts, onFinish }: DiscussionScree
               <span className="text-[10px] font-bold text-[#8C2218] font-mono">{Math.round((round / 3) * 100)}%</span>
             </div>
             <div className="text-sm font-bold text-[#8C2218] mb-3 font-serif tracking-widest">
-              {round === 1 ? '第一轮：观点阐述' : round === 2 ? '第二轮：互相回应' : '第三轮：达成共识'}
+              {round === 1 ? '第一轮：专家建议' : round === 2 ? '第二轮：观点交锋' : '第三轮：达成共识'}
             </div>
             <div className="h-1 bg-[#e8e4db] overflow-hidden">
               <div 
@@ -280,7 +280,7 @@ export function DiscussionScreen({ context, experts, onFinish }: DiscussionScree
                   {isFirstOfRound && (
                     <div className="w-full flex justify-center mb-10 mt-6">
                       <div className="bg-[#8C2218] text-[#f5f2eb] text-[10px] font-bold tracking-[0.3em] font-serif px-6 py-2 shadow-sm relative">
-                        {`第${msg.round === 1 ? '一' : msg.round === 2 ? '二' : '三'}轮 ${msg.round === 1 ? '观点陈述' : msg.round === 2 ? '思想交锋' : '达成共识'}`}
+                        {`第${msg.round === 1 ? '一' : msg.round === 2 ? '二' : '三'}轮 ${msg.round === 1 ? '专家建议' : msg.round === 2 ? '思想交锋' : '达成共识'}`}
                       </div>
                     </div>
                   )}

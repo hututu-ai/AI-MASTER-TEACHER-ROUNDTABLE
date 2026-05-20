@@ -24,6 +24,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [customExperts, setCustomExperts] = useState<Expert[]>([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
+  const [purpose, setPurpose] = useState('日常教学');
 
   useEffect(() => {
     setCustomExperts(loadCustomExperts());
@@ -112,7 +113,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       return;
     }
     const selectedExperts = allExperts.filter((e) => selectedIds.has(e.id));
-    onStart({ title, grade, text, confusion }, selectedExperts);
+    onStart({ title, grade, text, confusion, purpose }, selectedExperts);
   };
 
   return (
@@ -149,6 +150,28 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             </div>
           </div>
           <div>
+            <label className="block text-sm font-bold text-[#a09a8e] mb-3 uppercase tracking-wider font-serif">
+              备课用途 <span className="text-[#8C2218]">*</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(['日常教学', '公开课·示范课', '教研课', '期末复习'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setPurpose(opt)}
+                  className={cn(
+                    "px-4 py-2 text-sm font-bold font-serif border transition-all tracking-wider",
+                    purpose === opt
+                      ? "bg-[#8C2218] text-white border-[#8C2218] shadow-sm"
+                      : "bg-white/70 text-[#4a453c] border-[#e8e4db] hover:border-[#8C2218] hover:text-[#8C2218]"
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className="block text-sm font-bold text-[#a09a8e] mb-3 uppercase tracking-wider font-serif">课文原文</label>
             <textarea
               placeholder="粘贴需要研讨的课文段落或全文..."
@@ -160,7 +183,10 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           </div>
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="block text-sm font-bold text-[#a09a8e] uppercase tracking-wider font-serif">您的初始教案设计或教学困惑</label>
+              <label className="block text-sm font-bold text-[#a09a8e] uppercase tracking-wider font-serif">
+                您的具体问题
+                <span className="text-[#b0a89d] text-[11px] font-normal ml-2 normal-case tracking-normal">（问什么，名师就答什么）</span>
+              </label>
               <label className="cursor-pointer flex items-center gap-2 text-xs text-[#8C2218] hover:text-[#681610] font-bold font-serif transition-colors px-3 py-1 bg-white/50 border border-[#e8e4db] rounded-sm hover:bg-white shadow-sm">
                 <Upload className="w-3.5 h-3.5" />
                 <span>上传文档 (.txt, .docx, .pdf)</span>
@@ -180,7 +206,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               </div>
             ) : (
               <textarea
-                placeholder="您可以直接粘贴您已有的教案设计，或者写下您目前的思路、想要攻克的教学重难点..."
+                placeholder="您问什么，名师就答什么——可以只问「导入怎么设计？」「精读环节如何处理某个词语？」，也可以直接粘贴已有教案，请名师点评某个具体环节。"
                 value={confusion}
                 onChange={(e) => setConfusion(e.target.value)}
                 rows={4}
