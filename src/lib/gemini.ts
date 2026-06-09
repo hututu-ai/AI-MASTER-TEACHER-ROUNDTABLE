@@ -5,6 +5,7 @@ export interface LessonContext {
   grade: string;
   text: string;
   confusion: string;
+  purpose: string;
 }
 
 export interface DiscussionMessage {
@@ -21,7 +22,7 @@ function getApiConfig() {
   const baseUrl = localStorage.getItem('custom_api_base_url') || 'https://api.deepseek.com/v1';
   const apiKey = localStorage.getItem('custom_api_key') || '';
   const model = localStorage.getItem('custom_api_model') || 'deepseek-chat';
-  
+
   if (!apiKey) {
     throw new Error('未配置 API Key。请点击右上角设置图标填写您的 API Base URL 和 API Key。');
   }
@@ -31,9 +32,9 @@ function getApiConfig() {
 
 async function callOpenAI(systemPrompt: string, userPrompt: string, temperature: number = 0.7): Promise<string> {
   const { baseUrl, apiKey, model } = getApiConfig();
-  
+
   const endpoint = baseUrl.endsWith('/') ? `${baseUrl}chat/completions` : `${baseUrl}/chat/completions`;
-  
+
   const messages = [];
   if (systemPrompt) {
     messages.push({ role: 'system', content: systemPrompt });
@@ -72,21 +73,27 @@ export async function generateRound1(
   expert: Expert,
   context: LessonContext
 ): Promise<string> {
-  const prompt = `老师的备课内容如下：
+  const purposeNote = context.purpose || '日常教学';
+
+  const prompt = `老师正在备课，需要你给出具体可落地的教学建议。
+
 课文：《${context.title}》
 年级：${context.grade}
-课文原文：
-${context.text}
-初步设计或困惑：
+备课用途：${purposeNote}
+${context.text ? `课文原文：\n${context.text}\n` : ''}
+老师的具体问题：
 ${context.confusion}
 
-【当前任务：第一轮 - 各自表态】
-请从你的核心主张（${expert.coreView}）和关注视角（${expert.perspective}）出发，对这堂课给出你的初步判断和专业建议。
-要求：
-1. **独立发言**：本轮为独立思考时间，请【不要】提及、评价或反思其他名师的观点，只专注你自己的教学主张。
-2. **实操导向**：具体到课堂操作层面，不说空话，给出具体的教学策略。
-3. **字数限制**：150~300 字。
-4. **风格化**：充分展现你独特的个人口吻和标志性语言。`;
+【你的任务：直接给方案，不讲理论】
+
+请针对老师提出的具体问题，给出清晰可执行的答案。
+
+核心要求：
+1. **直接给步骤**：老师问什么就答什么。问导入怎么做，你就直接说"第一步……第二步……"；问某个词语怎么教，就说"先……再……最后……"。
+2. **可以立刻用**：具体到课堂话语、活动步骤、板书设计、时间分配。老师看完就能直接用。
+3. **体现你的风格**：把你的教学主张（${expert.coreView}）融入到具体做法里，而不是单独讲理论。
+4. **字数**：200～300字，精炼有力。
+5. **禁止**：不要大段铺垫理念，不要"可以考虑……""建议尝试……"这类模糊表述，直接说"这样做"。`;
 
   return await callOpenAI(expert.systemPrompt, prompt, 0.7);
 }
@@ -102,29 +109,27 @@ export async function generateRound2(
     .filter((m) => m.expertId !== expert.id)
     .map((m) => {
       const exp = experts.find((e) => e.id === m.expertId);
-      return `【${exp?.name} · ${exp?.coreView}】的第一轮建议：\n${m.content}`;
+      return `【${exp?.name}的方案】：\n${m.content}`;
     })
     .join('\n\n');
 
-  const prompt = `课文：《${context.title}》
-年级：${context.grade}
+  const prompt = `课文：《${context.title}》${context.grade}
 
-=== 老师的反馈/追问 ===
-${teacherFeedback || '（老师没有补充反馈，请直接开始名师间的对话）'}
+=== 老师的追问 ===
+${teacherFeedback || '（老师暂无追问）'}
 
-=== 查阅：第一轮其他专家的观点 ===
+=== 其他专家的第一轮建议 ===
 ${otherMessages}
 
-【当前任务：第二轮 - 观点博弈】
-现在进入名师圆桌的激烈讨论阶段。你已经听到了其他专家的第一轮建议。
-请针对性地进行回应，你应该：
-1. **展开博弈**：针对那些与你主张相左的观点（参考你的“天然张力对”），直接、犀利地提出你的不同意见。
-2. **拒绝附和**：不要只是简单地说“我同意...”，要指出如果按他人的设计做，可能会失去什么你认为更重要的东西。
-3. **回应老师**：如果老师有表态或追问，优先给予回应。
+【你的任务：直接回应，并给出你的替代方案】
+
+你已经看了其他专家的具体方案。现在是交锋时间——说出你真实的判断。
+
 要求：
-1. 字数 150~300 字。
-2. 必须引用或反驳至少一位其他专家的核心论条。
-3. 保持你鲜明的教学个性和执教风格。`;
+1. **明确表态**：哪个方案你认可？哪个你不认同？直接点名，说清楚原因（一句话即可）。
+2. **给替代做法**：对你不认同的部分，必须给出你自己的具体替代方案，不能只否定。
+3. **回应老师**：老师有追问的，优先具体解答。
+4. 字数 150～250字，保持你的个人口吻和风格。`;
 
   return await callOpenAI(expert.systemPrompt, prompt, 0.8);
 }
@@ -135,24 +140,24 @@ export async function generateRound3(
   allHistory: string,
   teacherFeedback: string
 ): Promise<string> {
-  const prompt = `老师的备课内容如下：
-课文：《${context.title}》
-年级：${context.grade}
+  const prompt = `课文：《${context.title}》${context.grade}
 
-=== 前两轮所有发言和老师的反馈 ===
+=== 前两轮研讨记录 ===
 ${allHistory}
 
 === 老师在第三轮前的最终反馈 ===
 ${teacherFeedback || '（无）'}
 
-现在是第三轮：收敛结论阶段。
-请在前两轮讨论和老师反馈的基础上，找到你和其他专家的共识点，收敛出结论。
+【你的任务：给老师一个最终的明确结论】
+
+研讨到了收尾阶段，请给老师一个清晰的最终建议。
+
 要求：
-1. 保留你自己独特的视角和建议，但在大方向上与其他专家对齐（例如：“从我的角度，我同意...，建议...”）。
-2. 若某个问题确实无法达成一致，明确标注为“保留分歧”。
-3. 给出最后对这堂课的具体建议。
-4. 字数控制在 150~300 字左右。
-5. 充分展现你独特的口吻和风格。`;
+1. **明确推荐**：直接说"我最终推荐这样做：……"，给出你认为最优的具体方案。
+2. **吸收共识**：如果你认同某位同行的某个做法，说"我同意××的……，可以和我的……结合使用"。
+3. **保留分歧**：若有坚持不让的立场，说"这里我仍然坚持……，因为……"。
+4. **给老师一句话**：用你的风格，给上这节课的老师一句有温度的提醒或鼓励。
+5. 字数 150～250字。`;
 
   return await callOpenAI(expert.systemPrompt, prompt, 0.5);
 }
@@ -203,25 +208,98 @@ export async function generateFinalLessonPlan(
     .map((e) => e.name)
     .join('、');
 
-  const prompt = `你是一个小学语文教研员。刚才多位名师对一篇课文进行了备课讨论。
-请根据完整的讨论记录，为老师提炼出最终的【教案草稿建议】。
+  const purpose = context.purpose || '日常教学';
+
+  const purposeGuide: Record<string, string> = {
+    '公开课·示范课': '本次教案用于公开课/示范课：需精致完整，各环节设计意图清晰，语言表达展现教学亮点，适合展示和观摩，可适当增加板书设计和过渡语示例。',
+    '日常教学': '本次教案用于日常课堂：注重实用，简洁明了，便于直接操作，不追求形式精致，重点写清楚"老师说什么、学生做什么"。',
+    '教研课': '本次教案用于教研活动：突出研究性，体现教学理念，重点环节需附上设计理由，适当引用名师观点作为理论支撑。',
+    '期末复习': '本次教案用于期末复习：重点梳理知识点，注重查漏补缺，适当加入练习题和巩固活动。',
+  };
+  const styleNote = purposeGuide[purpose] || '教案兼顾实用性与规范性。';
+
+  const prompt = `你是一位资深小学语文教研员。请根据以下名师研讨记录，为老师生成一份教案建议。
 
 基本信息：
-课文：《${context.title}》
-年级：${context.grade}
-参与专家：${expertsList}
+- 课文：《${context.title}》${context.grade}
+- 参与专家：${expertsList}
+- 备课用途：${purpose}
+- 老师的核心问题：${context.confusion || '完整教学设计'}
 
-=== 完整讨论记录 ===
+教案风格：${styleNote}
+
+=== 完整研讨记录 ===
 ${fullHistory}
 
-请输出结构化的教案建议，必须包含以下部分：
-【教学目标建议】（综合专家的核心观点）
-【教学环节建议】（分环节详细说明，并注明各个环节是由哪位专家提供的视角/建议）
-【各专家特别提醒】（每位专家最核心的嘱托，简明扼要）
-【共识要点】（专家们一致认同的方向）
-【保留分歧】（如果有专家意见相左的地方，列出双方观点，供老师自行判断）
+---
 
-要求：格式清晰（使用Markdown），语言精炼，有实操性。`;
+【输出原则——严格执行】
+- 老师只问了某个具体环节（如"导入怎么设计"），就**只输出那个环节**，不要补充其他环节。
+- 老师问了完整教案，才按完整格式输出所有环节。
+- 只提炼名师在研讨中真正说过的内容，不要凭空编造。
+- 教案步骤要具体到"老师说什么、学生做什么"，不要只写活动名称。
+- **融会贯通**：即使老师偏好某一位专家的风格，教案也必须从所有参与专家的建议中各取精华，而不是只套用一种流派。每位专家的独特洞见都值得体现——可以是同一环节里的不同层次，也可以是不同环节里各自发挥。目标是让老师拿到的是集成智慧，而不是某一个人的复述。
+
+请按以下Markdown格式输出：
+
+---
+
+# 《${context.title}》教学设计建议
+
+**年级**：${context.grade}
+**用途**：${purpose}
+**执笔说明**：综合${expertsList}等名师研讨意见整理
+
+---
+
+## 教学目标
+
+1. ……
+2. ……
+3. ……
+
+## 教学重难点
+
+**重点**：……
+**难点**：……
+
+---
+
+## 教学过程
+
+（根据老师的提问，只写对应环节；每个环节严格按以下格式）
+
+### 【环节名称】（建议时长：X分钟）
+
+**设计意图**：（一句话说明为什么这样设计）
+
+**教学步骤**：
+
+1. **教师**：……（具体说什么、做什么）
+   **学生**：……（预期反应或任务）
+2. ……
+3. ……
+
+**参考教师语言**：
+> "……"（给老师一句可以直接用的课堂引导语）
+
+（若多位专家给出了不同方案，格式如下：）
+
+> **方案A（参考×××）**：……
+> **方案B（参考×××）**：……
+> **编者建议**：……
+
+---
+
+## 名师核心叮嘱
+
+| 专家 | 最重要的一句提醒 |
+|------|----------------|
+| ×××  | …… |
+
+## 保留分歧
+
+（若专家意见有本质分歧，在此列出，供老师自行判断；无分歧则删除此节）`;
 
   return await callOpenAI('', prompt, 0.4);
 }

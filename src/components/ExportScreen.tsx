@@ -24,6 +24,7 @@ interface ExportScreenProps {
 
 export function ExportScreen({ context, experts, messages, lessonPlan, onRestart }: ExportScreenProps) {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingDOCX, setIsExportingDOCX] = useState(false);
   
   const getExpert = (id: string) => experts.find(e => e.id === id);
 
@@ -109,28 +110,48 @@ export function ExportScreen({ context, experts, messages, lessonPlan, onRestart
   };
 
   const handleExportDOCX = async () => {
+    setIsExportingDOCX(true);
     try {
       const { parse } = await import('marked');
-      const htmlContent = await parse(getFullMarkdown());
-      // Export as .doc which Word will open perfectly
-      const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>教案</title></head><body>";
-      const footer = "</body></html>";
-      const sourceHTML = header + htmlContent + footer;
-      
-      const blob = new Blob(['\ufeff', sourceHTML], {
-        type: 'application/msword' // use msword to trigger word
+      // @ts-ignore – html-to-docx has no bundled type declarations
+      const HTMLtoDOCX = (await import('html-to-docx')).default;
+
+      const bodyHTML = await parse(getFullMarkdown());
+      // Wrap with Chinese-friendly styles so Word renders correctly
+      const styledHTML = `<html><head><meta charset="utf-8">
+        <style>
+          body{font-family:"宋体",SimSun,serif;font-size:12pt;line-height:1.8;color:#222}
+          h1{font-size:18pt;font-weight:bold;text-align:center;margin:24pt 0 12pt}
+          h2{font-size:14pt;font-weight:bold;margin:16pt 0 8pt;border-bottom:1px solid #ccc;padding-bottom:4pt}
+          h3{font-size:13pt;font-weight:bold;margin:12pt 0 6pt}
+          table{width:100%;border-collapse:collapse;margin:8pt 0}
+          td,th{border:1px solid #ccc;padding:6pt 8pt}
+          th{background:#f5f5f5;font-weight:bold}
+          blockquote{border-left:3px solid #8C2218;margin:8pt 0 8pt 12pt;padding-left:8pt;color:#555}
+          hr{border:none;border-top:1px solid #ddd;margin:16pt 0}
+        </style></head>
+        <body>${bodyHTML}</body></html>`;
+
+      const docxBlob = await HTMLtoDOCX(styledHTML, null, {
+        table: { row: { cantSplit: true } },
+        footer: false,
+        pageNumber: false,
+        margins: { top: 1440, right: 1800, bottom: 1440, left: 1800 },
       });
-      
-      const url = URL.createObjectURL(blob);
+
+      const url = URL.createObjectURL(docxBlob as Blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `教案及研讨记录《${context.title}》.doc`;
+      a.download = `教案及研讨记录《${context.title}》.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch(err) {
       console.error(err);
+      alert('Word 导出失败，请重试。');
+    } finally {
+      setIsExportingDOCX(false);
     }
   };
 
@@ -196,11 +217,12 @@ export function ExportScreen({ context, experts, messages, lessonPlan, onRestart
               {isExportingPDF ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
               下载PDF版
             </button>
-            <button 
+            <button
               onClick={handleExportDOCX}
-              className="w-full bg-[#fdfaf5] border border-[#d8d3c9] text-[#1c3f60] hover:bg-[#204a73] hover:text-[#f5f2eb] font-bold py-4 shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-3 font-serif tracking-widest"
+              disabled={isExportingDOCX}
+              className="w-full bg-[#fdfaf5] border border-[#d8d3c9] text-[#1c3f60] hover:bg-[#204a73] hover:text-[#f5f2eb] disabled:opacity-60 disabled:cursor-not-allowed font-bold py-4 shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-3 font-serif tracking-widest"
             >
-              <FileDown className="w-5 h-5" />
+              {isExportingDOCX ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
               下载Word版
             </button>
             <button 
